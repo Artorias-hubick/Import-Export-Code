@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>РДН і перетини</title>
+<meta name="description" content="Ціни РДН України та суміжних країн, ціни перетинів і аналітика динаміки за обраний період.">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f5f2; --surface: #fcfcfb; --border: #e4e2dc; --grid: #ecebe6;
+  --text: #0b0b0b; --text-2: #52514e; --muted: #7c7b76; --accent: #2a78d6;
+  --up: #b42d2d; --down: #0a7a0a;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --border: #2e2e2b; --grid: #2a2a27;
+    --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86; --accent: #3987e5;
+    --up: #e66767; --down: #3cc23c;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --border: #2e2e2b; --grid: #2a2a27;
+  --text: #f0efec; --text-2: #c3c2b7; --muted: #8f8e86; --accent: #3987e5;
+  --up: #e66767; --down: #3cc23c;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 2px; }
+.sub { color: var(--text-2); font-size: 13px; }
+.filters { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0;
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.group { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.group > span { color: var(--muted); font-size: 12px; margin-right: 2px; }
+button.seg, .chip { border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  padding: 5px 10px; border-radius: 6px; font: inherit; font-size: 13px; cursor: pointer; }
+button.seg[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip { display: inline-flex; align-items: center; gap: 6px; }
+.chip i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chip[aria-pressed="false"] { opacity: .45; }
+input[type=date] { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  padding: 4px 6px; border-radius: 6px; font: inherit; font-size: 13px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.tile .k { color: var(--text-2); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .d { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 10px; margin-bottom: 16px; min-width: 0; }
+.chart { position: relative; height: 300px; margin-top: 8px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--text-2); font-weight: 600; font-size: 12px; }
+.note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Ціни РДН і перетини: Україна та сусіди</h1>
+    <div class="sub" id="updated"></div>
+  </header>
+
+  <div class="filters" role="toolbar" aria-label="Фільтри">
+    <div class="group" id="presets"><span>Період</span></div>
+    <div class="group"><input type="date" id="from" aria-label="Від"> – <input type="date" id="to" aria-label="До"></div>
+    <div class="group" id="aggs"><span>Крок</span></div>
+    <div class="group" id="hours"><span>Години</span></div>
+    <div class="group" id="cur"><span>Валюта</span></div>
+  </div>
+
+  <div class="group" id="zones" style="margin-bottom:12px"><span>Країни</span></div>
+  <div class="tiles" id="tiles"></div>
+
+  <div class="card">
+    <h2>Ціни РДН</h2><div class="sub" id="rdnSub"></div>
+    <div class="chart"><canvas id="cRdn"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Спред: сусід − Україна</h2><div class="sub">Додатне значення: у сусіда дорожче, тобто вигідний експорт з України</div>
+      <div class="chart"><canvas id="cSpread"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Середній профіль доби</h2><div class="sub">Середня ціна кожної години (CET) за обраний період</div>
+      <div class="chart"><canvas id="cProfile"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Перетини: експорт UA → сусід</h2><div class="sub">Середня ціна розподіленої потужності, лише години з потужністю</div>
+      <div class="chart"><canvas id="cExp"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Перетини: імпорт сусід → UA</h2><div class="sub">Середня ціна розподіленої потужності, лише години з потужністю</div>
+      <div class="chart"><canvas id="cImp"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Аналітика цін РДН за період</h2>
+    <div class="sub">Порівняння з попереднім періодом такої самої довжини</div>
+    <div class="tablewrap"><table id="tStats"></table></div>
+    <div class="note">Волатильність: стандартне відхилення середньодобових цін. Розмах доби: середня різниця між найдорожчою і найдешевшою годиною. Пік: години 9–20 CET.</div>
+  </div>
+
+  <div class="card">
+    <h2>Арбітраж з урахуванням перетину</h2>
+    <div class="sub">Маржа за годину = різниця цін РДН мінус ціна перетину. Враховуються лише години, коли на перетині була потужність</div>
+    <div class="tablewrap"><table id="tArb"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Перетини за період</h2>
+    <div class="tablewrap"><table id="tCross"></table></div>
+  </div>
+
+  <div class="note">Джерела: ОРЕЕ (UA), OKTE (SK), energy-charts / ENTSO-E (PL, HU), OPCOM (RO, MD), JAO та eap-office (перетини). Ціни України переведено в EUR за курсом купівлі з листа «Архів курсу». Години вказано за CET.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="data.js"></script>
+<script>
+(() => {
+  const D = window.DATA;
+  if (!D) { document.querySelector(".wrap").insertAdjacentHTML("beforeend", '<p class="empty">Немає data.js</p>'); return; }
+  const ZONES = [
+    { id: "UA", name: "Україна", c: "--s1" }, { id: "SK", name: "Словаччина", c: "--s2" },
+    { id: "PL", name: "Польща", c: "--s3" }, { id: "HU", name: "Угорщина", c: "--s4" },
+    { id: "RO", name: "Румунія", c: "--s5" }, { id: "MD", name: "Молдова", c: "--s6" },
+  ];
+  const NEIGH = ZONES.slice(1);
+  const PEAK = h => h >= 8 && h <= 19; // індекс 0..23 → години 9..20
+  const HOURSEL = { all: () => true, peak: PEAK, off: h => !PEAK(h) };
+  const iso = d => d.toISOString().slice(0, 10);
+  const addDays = (s, n) => { const d = new Date(s + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const fmt = (v, p = 1) => v == null || !isFinite(v) ? "—" : v.toLocaleString("uk-UA", { minimumFractionDigits: p, maximumFractionDigits: p });
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const std = a => { const m = mean(a); return a.length > 1 ? Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)) : null; };
+
+  const allDates = [...new Set(Object.values(D.rdn).flatMap(s => Object.keys(s)))].sort();
+  const lastDate = allDates[allDates.length - 1];
+  const fxDates = Object.keys(D.fx).sort();
+  const fxCache = {};
+  function fx(d) {
+    if (d in fxCache) return fxCache[d];
+    let lo = 0, hi = fxDates.length - 1, r = fxDates[0];
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (fxDates[m] <= d) { r = fxDates[m]; lo = m + 1; } else hi = m - 1; }
+    return fxCache[d] = D.fx[r];
+  }
+
+  const state = { from: addDays(lastDate, -29), to: lastDate, agg: "day", hours: "all", cur: "EUR",
+    zones: new Set(ZONES.map(z => z.id)) };
+  try { Object.assign(state, JSON.parse(localStorage.getItem("rdn-view") || "{}"), { zones: state.zones }); } catch (e) {}
+
+  // ціна зони z, дата d, година h у вибраній валюті
+  function price(z, d, h) {
+    const row = D.rdn[z][d]; const v = row && row[h];
+    if (v == null) return null;
+    const uah = z === "UA";
+    if (state.cur === "EUR") return uah ? v / fx(d) : v;
+    return uah ? v : v * fx(d);
+  }
+  function cross(k, d, h) {
+    const row = D.cross[k][d]; const v = row && row[h];
+    return v == null ? null : state.cur === "EUR" ? v : v * fx(d);
+  }
+  const unit = () => state.cur === "EUR" ? "EUR/МВт·год" : "грн/МВт·год";
+  const datesIn = (a, b) => allDates.filter(d => d >= a && d <= b);
+  const bucketOf = (d, h) => state.agg === "hour" ? `${d} ${String(h + 1).padStart(2, "0")}` :
+    state.agg === "day" ? d : state.agg === "month" ? d.slice(0, 7) : d.slice(0, 4);
+
+  function series(getter, dates) {
+    const sel = HOURSEL[state.hours], acc = new Map();
+    for (const d of dates) for (let h = 0; h < 24; h++) {
+      if (!sel(h)) continue;
+      const b = bucketOf(d, h); if (!acc.has(b)) acc.set(b, []);
+      const v = getter(d, h); if (v != null) acc.get(b).push(v);
+    }
+    return { labels: [...acc.keys()], values: [...acc.values()].map(mean) };
+  }
+
+  // ---------- controls
+  function segGroup(el, items, key, onPick) {
+    const box = document.getElementById(el);
+    items.forEach(([v, label]) => {
+      const b = document.createElement("button"); b.className = "seg"; b.textContent = label; b.dataset.v = v;
+      b.addEventListener("click", () => onPick ? onPick(v) : (state[key] = v, render()));
+      box.appendChild(b);
+    });
+  }
+  const PRESETS = [["7", "7 дн"], ["30", "30 дн"], ["90", "90 дн"], ["ytd", "З початку року"], ["365", "Рік"], ["all", "Усе"]];
+  segGroup("presets", PRESETS, null, v => {
+    state.to = lastDate;
+    state.from = v === "all" ? allDates[0] : v === "ytd" ? lastDate.slice(0, 4) + "-01-01" : addDays(lastDate, 1 - +v);
+    state.preset = v; render();
+  });
+  segGroup("aggs", [["hour", "Година"], ["day", "День"], ["month", "Місяць"], ["year", "Рік"]], "agg");
+  segGroup("hours", [["all", "Усі"], ["peak", "Пік"], ["off", "Поза піком"]], "hours");
+  segGroup("cur", [["EUR", "EUR"], ["UAH", "грн"]], "cur");
+  const zBox = document.getElementById("zones");
+  ZONES.forEach(z => {
+    const b = document.createElement("button"); b.className = "chip"; b.dataset.z = z.id;
+    b.innerHTML = `<i style="background:var(${z.c})"></i>`; b.append(z.name);
+    b.addEventListener("click", () => { state.zones.has(z.id) ? state.zones.delete(z.id) : state.zones.add(z.id); render(); });
+    zBox.appendChild(b);
+  });
+  const fromEl = document.getElementById("from"), toEl = document.getElementById("to");
+  [fromEl, toEl].forEach(el => { el.min = allDates[0]; el.max = lastDate; });
+  fromEl.addEventListener("change", () => { if (fromEl.value) { state.from = fromEl.value; state.preset = null; render(); } });
+  toEl.addEventListener("change", () => { if (toEl.value) { state.to = toEl.value; state.preset = null; render(); } });
+
+  // ---------- charts
+  const charts = {};
+  function lineChart(id, labels, sets, opts = {}) {
+    const grid = css("--grid"), muted = css("--muted");
+    const data = { labels, datasets: sets.map(s => ({
+      label: s.label, data: s.data, borderColor: css(s.c), backgroundColor: css(s.c),
+      borderWidth: 2, pointRadius: labels.length < 40 ? 3 : 0, pointHoverRadius: 5, tension: 0.15, spanGaps: false,
+      pointBorderColor: css("--surface"), pointBorderWidth: 2 })) };
+    const options = {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { labels: { color: css("--text-2"), boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: "rectRounded" } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmt(c.parsed.y, 2)}` } },
+      },
+      scales: {
+        x: { ticks: { color: muted, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
+        y: { ticks: { color: muted, callback: v => fmt(v, 0) }, grid: { color: grid },
+             title: { display: true, text: opts.unit || unit(), color: muted } },
+      },
+    };
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), { type: "line", data, options });
+  }
+
+  function clampAgg(dates) {
+    if (state.agg === "hour" && dates.length > 31) state.agg = "day";
+  }
+
+  // ---------- stats
+  function zoneStats(z, dates) {
+    const sel = HOURSEL[state.hours], all = [], daily = [], ranges = [], base = [], peak = [];
+    for (const d of dates) {
+      const day = [];
+      for (let h = 0; h < 24; h++) { const v = price(z, d, h); if (v == null) continue;
+        base.push(v); if (PEAK(h)) peak.push(v); if (sel(h)) { all.push(v); day.push(v); } }
+      if (day.length) { daily.push(mean(day)); ranges.push(Math.max(...day) - Math.min(...day)); }
+    }
+    return { avg: mean(all), min: all.length ? Math.min(...all) : null, max: all.length ? Math.max(...all) : null,
+      base: mean(base), peak: mean(peak), vol: std(daily), range: mean(ranges), days: daily.length };
+  }
+  const pct = (a, b) => a == null || b == null || !b ? null : (a - b) / Math.abs(b) * 100;
+  const delta = (p, digits = 1) => p == null ? '<span>—</span>' :
+    `<span class="${p > 0 ? "up" : p < 0 ? "down" : ""}">${p > 0 ? "▲ +" : p < 0 ? "▼ " : ""}${fmt(p, digits)}%</span>`;
+
+  function renderStats(dates) {
+    const n = dates.length, prev = datesIn(addDays(state.from, -n), addDays(state.from, -1));
+    const rows = ZONES.filter(z => state.zones.has(z.id)).map(z => {
+      const s = zoneStats(z.id, dates), p = zoneStats(z.id, prev);
+      return `<tr><td>${z.name}</td><td>${fmt(s.avg)}</td><td>${delta(pct(s.avg, p.avg))}</td><td>${fmt(s.base)}</td><td>${fmt(s.peak)}</td>
+        <td>${fmt(s.min)}</td><td>${fmt(s.max)}</td><td>${fmt(s.vol)}</td><td>${fmt(s.range)}</td></tr>`;
+    }).join("");
+    document.getElementById("tStats").innerHTML = `<thead><tr><th>Країна</th><th>Середня</th><th>Δ до попер.</th><th>Base</th><th>Peak</th>
+      <th>Мін</th><th>Макс</th><th>Волатильність</th><th>Розмах доби</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+
+  function renderTiles(dates) {
+    const dayAvg = (z, dd) => mean([...Array(24).keys()].map(h => price(z, dd, h)).filter(v => v != null));
+    const html = ZONES.filter(z => state.zones.has(z.id)).map(z => {
+      // остання доба з даними в межах періоду (сусіди публікують D+1 пізніше за Україну)
+      const d = [...dates].reverse().find(x => D.rdn[z.id][x]);
+      if (!d) return "";
+      const dPrev = addDays(d, -1), wk = datesIn(addDays(d, -7), dPrev);
+      const v = dayAvg(z.id, d), p = dayAvg(z.id, dPrev), w = mean(wk.map(x => dayAvg(z.id, x)).filter(x => x != null));
+      return `<div class="tile"><div class="k"><i style="width:10px;height:10px;border-radius:3px;background:var(${z.c})"></i>${z.name}, base ${d.slice(8)}.${d.slice(5, 7)}</div>
+        <div class="v">${fmt(v)}</div><div class="d">до вчора ${delta(pct(v, p))} · до 7 дн ${delta(pct(v, w))}</div></div>`;
+    }).join("");
+    document.getElementById("tiles").innerHTML = html;
+  }
+
+  function renderArb(dates) {
+    const rows = NEIGH.map(z => {
+      const r = { exp: [], imp: [], expHours: 0, impHours: 0 };
+      for (const d of dates) for (let h = 0; h < 24; h++) {
+        const ua = price("UA", d, h), x = price(z.id, d, h); if (ua == null || x == null) continue;
+        const ce = cross(`UA-${z.id}`, d, h), ci = cross(`${z.id}-UA`, d, h);
+        if (ce != null) { const m = x - ua - ce; if (m > 0) { r.exp.push(m); } r.expHours++; }
+        if (ci != null) { const m = ua - x - ci; if (m > 0) { r.imp.push(m); } r.impHours++; }
+      }
+      const share = (a, n) => n ? fmt(a.length / n * 100, 0) + "%" : "—";
+      return `<tr><td>${z.name}</td><td>${r.exp.length}</td><td>${share(r.exp, r.expHours)}</td><td>${fmt(mean(r.exp))}</td>
+        <td>${r.imp.length}</td><td>${share(r.imp, r.impHours)}</td><td>${fmt(mean(r.imp))}</td></tr>`;
+    }).join("");
+    document.getElementById("tArb").innerHTML = `<thead><tr><th>Сусід</th><th>Експорт: год у плюс</th><th>частка</th><th>сер. маржа</th>
+      <th>Імпорт: год у плюс</th><th>частка</th><th>сер. маржа</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+
+  function renderCrossTable(dates) {
+    const rows = NEIGH.flatMap(z => [`UA-${z.id}`, `${z.id}-UA`]).map(k => {
+      const vals = [], prices = []; let hours = 0;
+      for (const d of dates) { const row = D.cross[k][d]; if (!row) continue;
+        for (let h = 0; h < 24; h++) { hours++; const v = cross(k, d, h); if (v != null) { vals.push(v); if (v > 0) prices.push(v); } } }
+      return `<tr><td>${k.replace("-", " → ")}</td><td>${fmt(mean(vals), 2)}</td><td>${fmt(vals.length ? Math.max(...vals) : null, 2)}</td>
+        <td>${hours ? fmt(vals.length / hours * 100, 0) + "%" : "—"}</td><td>${hours ? fmt(prices.length / hours * 100, 0) + "%" : "—"}</td></tr>`;
+    }).join("");
+    document.getElementById("tCross").innerHTML = `<thead><tr><th>Напрям</th><th>Сер. ціна</th><th>Макс</th><th>Год з потужністю</th>
+      <th>Год з ціною &gt; 0</th></tr></thead><tbody>${rows}</tbody>`;
+  }
+
+  // ---------- render
+  function render() {
+    if (state.from > state.to) [state.from, state.to] = [state.to, state.from];
+    const dates = datesIn(state.from, state.to);
+    clampAgg(dates);
+    try { localStorage.setItem("rdn-view", JSON.stringify({ agg: state.agg, hours: state.hours, cur: state.cur })); } catch (e) {}
+    fromEl.value = state.from; toEl.value = state.to;
+    document.querySelectorAll("#presets button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === state.preset));
+    document.querySelectorAll("#aggs button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === state.agg));
+    document.querySelectorAll("#hours button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === state.hours));
+    document.querySelectorAll("#cur button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === state.cur));
+    document.querySelectorAll("#zones .chip").forEach(b => b.setAttribute("aria-pressed", state.zones.has(b.dataset.z)));
+    if (!dates.length) return;
+    const zs = ZONES.filter(z => state.zones.has(z.id));
+    const ns = zs.filter(z => z.id !== "UA");
+
+    const rdn = zs.map(z => ({ z, s: series((d, h) => price(z.id, d, h), dates) }));
+    const labels = rdn.length ? rdn[0].s.labels : [];
+    lineChart("cRdn", labels, rdn.map(({ z, s }) => ({ label: z.name, c: z.c, data: s.values })));
+    document.getElementById("rdnSub").textContent = `${dates.length} дн. · ${unit()} · середнє за ${({ hour: "годину", day: "добу", month: "місяць", year: "рік" })[state.agg]}`;
+
+    lineChart("cSpread", labels, ns.map(z => ({ label: z.name, c: z.c,
+      data: series((d, h) => { const a = price(z.id, d, h), b = price("UA", d, h); return a == null || b == null ? null : a - b; }, dates).values })));
+
+    const sel = HOURSEL[state.hours];
+    lineChart("cProfile", [...Array(24).keys()].map(h => String(h + 1)), zs.map(z => ({ label: z.name, c: z.c,
+      data: [...Array(24).keys()].map(h => sel(h) ? mean(dates.map(d => price(z.id, d, h)).filter(v => v != null)) : null) })));
+
+    lineChart("cExp", labels, ns.map(z => ({ label: `UA → ${z.id}`, c: z.c, data: series((d, h) => cross(`UA-${z.id}`, d, h), dates).values })));
+    lineChart("cImp", labels, ns.map(z => ({ label: `${z.id} → UA`, c: z.c, data: series((d, h) => cross(`${z.id}-UA`, d, h), dates).values })));
+
+    renderTiles(dates); renderStats(dates); renderArb(dates); renderCrossTable(dates);
+  }
+
+  document.getElementById("updated").textContent = `Дані до ${lastDate.split("-").reverse().join(".")} · оновлено ${D.updated}`;
+  state.preset = "30";
+  render();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+})();
+</script>
+</body>
+</html>

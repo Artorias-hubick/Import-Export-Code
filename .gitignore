@@ -1,0 +1,14 @@
+# Секрети: ніколи не комітити
+.env
+credentials.json
+token*.json
+service-account.json
+
+# Робочі файли
+__pycache__/
+chrome_profile_eap/
+eap_downloads/
+eap_capture.json
+eap_debug.png
+*log.txt
+report_sent.txt
