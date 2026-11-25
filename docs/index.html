@@ -91,6 +91,19 @@ th { color: var(--text-2); font-weight: 600; font-size: 12px; }
     <div class="chart"><canvas id="cRdn"></canvas></div>
   </div>
 
+  <div class="card" id="hourly">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center">
+      <div><h2>Погодинні ціни РДН за добу</h2><div class="sub">Години CET · порожньо: ціни ще не опубліковані</div></div>
+      <div class="group">
+        <button class="seg" id="dayPrev" aria-label="Попередня доба">◀</button>
+        <input type="date" id="day" aria-label="Доба">
+        <button class="seg" id="dayNext" aria-label="Наступна доба">▶</button>
+      </div>
+    </div>
+    <div class="chart"><canvas id="cDay"></canvas></div>
+    <div class="tablewrap" style="margin-top:10px"><table id="tDay"></table></div>
+  </div>
+
   <div class="grid2">
     <div class="card">
       <h2>Спред: сусід − Україна</h2><div class="sub">Додатне значення: у сусіда дорожче, тобто вигідний експорт з України</div>
@@ -323,8 +336,37 @@ th { color: var(--text-2); font-weight: 600; font-size: 12px; }
       <th>Год з ціною &gt; 0</th></tr></thead><tbody>${rows}</tbody>`;
   }
 
+  // ---------- погодинні ціни за одну добу
+  const dayEl = document.getElementById("day");
+  dayEl.min = allDates[0]; dayEl.max = lastDate;
+  const shiftDay = n => { const v = addDays(state.day, n); if (v >= allDates[0] && v <= lastDate) { state.day = v; renderDay(); } };
+  document.getElementById("dayPrev").addEventListener("click", () => shiftDay(-1));
+  document.getElementById("dayNext").addEventListener("click", () => shiftDay(1));
+  dayEl.addEventListener("change", () => { if (dayEl.value) { state.day = dayEl.value; renderDay(); } });
+
+  function renderDay() {
+    const d = state.day; dayEl.value = d;
+    const zs = ZONES.filter(z => state.zones.has(z.id));
+    const hrs = [...Array(24).keys()];
+    lineChart("cDay", hrs.map(h => String(h + 1)), zs.map(z => ({ label: z.name, c: z.c, data: hrs.map(h => price(z.id, d, h)) })));
+    const hasUA = state.zones.has("UA");
+    const head = `<tr><th>Година</th>${zs.map(z => `<th>${z.name}</th>`).join("")}` +
+      (hasUA ? zs.filter(z => z.id !== "UA").map(z => `<th>${z.id} − UA</th>`).join("") : "") + "</tr>";
+    const body = hrs.map(h => {
+      const ua = price("UA", d, h);
+      const cells = zs.map(z => `<td>${fmt(price(z.id, d, h), 2)}</td>`).join("");
+      const spr = hasUA ? zs.filter(z => z.id !== "UA").map(z => { const x = price(z.id, d, h);
+        const s = x == null || ua == null ? null : x - ua;
+        return `<td class="${s > 0 ? "up" : s < 0 ? "down" : ""}">${fmt(s, 2)}</td>`; }).join("") : "";
+      return `<tr${PEAK(h) ? ' style="font-weight:600"' : ""}><td>${h + 1}</td>${cells}${spr}</tr>`;
+    }).join("");
+    const avgRow = (label, f) => `<tr><td><b>${label}</b></td>${zs.map(z => `<td><b>${fmt(mean(hrs.filter(f).map(h => price(z.id, d, h)).filter(v => v != null)), 2)}</b></td>`).join("")}${hasUA ? zs.filter(z => z.id !== "UA").map(() => "<td></td>").join("") : ""}</tr>`;
+    document.getElementById("tDay").innerHTML = `<thead>${head}</thead><tbody>${body}${avgRow("Base", () => true)}${avgRow("Peak 9–20", PEAK)}</tbody>`;
+  }
+
   // ---------- render
   function render() {
+    renderDay();
     if (state.from > state.to) [state.from, state.to] = [state.to, state.from];
     const dates = datesIn(state.from, state.to);
     clampAgg(dates);
@@ -359,6 +401,7 @@ th { color: var(--text-2); font-weight: 600; font-size: 12px; }
 
   document.getElementById("updated").textContent = `Дані до ${lastDate.split("-").reverse().join(".")} · оновлено ${D.updated}`;
   state.preset = "30";
+  state.day = lastDate;
   render();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
 })();
